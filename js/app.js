@@ -239,15 +239,16 @@ function setupModelAnimations(root) {
       return;
     }
 
-    // Hide any mesh that is physically too large (e.g. Cube.243 size 25x61m)
+    // Hide any mesh that is physically too large on all axes (like the Cube.243 background box)
     if (node.isMesh) {
       node.geometry.computeBoundingBox();
       const box = node.geometry.boundingBox;
       if (box) {
         const size = new THREE.Vector3();
         box.getSize(size);
-        if (size.x > 2.0 || size.y > 2.0 || size.z > 2.0) {
-          console.log('Hiding giant mesh by size:', node.name, size);
+        // Studio boxes are huge in all 3 dimensions, whereas long bridge rails are only large on 1 axis
+        if (size.x > 5.0 && size.y > 5.0 && size.z > 5.0) {
+          console.log('Hiding giant background box by size:', node.name, size);
           node.visible = false;
           return;
         }
