@@ -152,6 +152,7 @@ async function initAR() {
       isTracked = true;
       scanningOverlay.classList.add('hidden');
       infoOverlay.classList.remove('hidden');
+      lockBtn.classList.remove('hidden'); // Show lock button floating bubble!
 
       if (isFirstDetection) {
         triggerArrivalSequence();
@@ -170,6 +171,7 @@ async function initAR() {
           targetScale = 0.0;
           infoOverlay.classList.add('hidden');
           scanningOverlay.classList.remove('hidden');
+          lockBtn.classList.add('hidden'); // Hide lock button bubble!
           closeHotspotModal();
         }
       }, GRACE_PERIOD_MS);
@@ -687,9 +689,8 @@ function updateARLoop() {
 
 // Setup touch controls for dragging, scaling, and rotating the model in lock mode
 function setupTouchControls() {
-  const container = document.getElementById('ar-container');
-  
-  container.addEventListener('touchstart', (e) => {
+  // Attach directly to window to bypass WebGL canvas pointer-events blocking
+  window.addEventListener('touchstart', (e) => {
     if (!isLocked) return;
     if (e.touches.length === 1) {
       previousTouchX = e.touches[0].clientX;
@@ -702,7 +703,7 @@ function setupTouchControls() {
     }
   });
 
-  container.addEventListener('touchmove', (e) => {
+  window.addEventListener('touchmove', (e) => {
     if (!isLocked) return;
     
     if (e.touches.length === 1) {
@@ -710,8 +711,8 @@ function setupTouchControls() {
       const touchX = e.touches[0].clientX;
       const touchY = e.touches[0].clientY;
       
-      const deltaX = (touchX - previousTouchX) * 0.003;
-      const deltaY = (touchY - previousTouchY) * -0.003; // invert screen Y
+      const deltaX = (touchX - previousTouchX) * 0.0035;
+      const deltaY = (touchY - previousTouchY) * -0.0035; // invert screen Y
 
       visualGroup.position.x += deltaX;
       visualGroup.position.y += deltaY;
@@ -729,8 +730,8 @@ function setupTouchControls() {
       if (previousTouchDistance > 0) {
         const scaleFactor = distance / previousTouchDistance;
         const newScale = visualGroup.scale.x * scaleFactor;
-        // Limit scale to a reasonable range
-        if (newScale > 0.2 && newScale < 8.0) {
+        // Limit scale to a reasonable range relative to raw standard scale
+        if (newScale > 0.1 && newScale < 8.0) {
           visualGroup.scale.set(newScale, newScale, newScale);
         }
       }
@@ -757,12 +758,9 @@ lockBtn.addEventListener('click', () => {
   if (isLocked) {
     lockBtn.classList.add('locked');
     lockBtnIcon.textContent = '🔓';
-    lockBtnText.textContent = 'RELEASE TO CARD';
   } else {
     lockBtn.classList.remove('locked');
     lockBtnIcon.textContent = '🔒';
-    lockBtnText.textContent = 'LOCK TO SCREEN';
-    // Re-align position to anchor group when returning to tracking
     targetScale = 1.0;
   }
 });

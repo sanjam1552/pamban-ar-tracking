@@ -92,34 +92,25 @@
   <!-- Main Info Overlay (Visible when target is tracked) -->
   <div id="info-overlay" class="ui-overlay hidden">
     <div class="card-details">
-      <div class="card-header">
-        <span class="badge">LIVE AR</span>
+      <div class="card-header-compact">
         <h3>NEW PAMBAN BRIDGE</h3>
+        <span class="badge">LIVE AR</span>
       </div>
-      <p class="desc">India's First Vertical Lift Railway Sea Bridge connecting Rameswaram Island to mainland India.</p>
       
-      <div class="stats-grid">
-        <div class="stat-item">
-          <div class="stat-value">2.07 km</div>
-          <div class="stat-label">Total Length</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value">72.5 m</div>
-          <div class="stat-label">Vertical Lift Span</div>
-        </div>
-      </div>
-
-      <button id="lock-btn" class="btn lock-btn-hud">
-        <span id="lock-btn-icon">🔒</span> <span id="lock-btn-text">LOCK TO SCREEN</span>
-      </button>
-
-      <div class="control-hints">
-        Tap the pulsing blue spheres on the bridge to view detailed technical specs.
+      <div class="stats-grid-compact">
+        <span class="stat-item-compact"><strong>Length:</strong> 2.07 km</span>
+        <span class="stat-separator">|</span>
+        <span class="stat-item-compact"><strong>Lift Span:</strong> 72.5 m</span>
       </div>
     </div>
   </div>
 
+  <!-- Floating Lock Button (Visible after model detection) -->
+  <button id="lock-btn" class="lock-btn-hud hidden">
+    <span id="lock-btn-icon">🔒</span><span id="lock-btn-text" class="sr-only">Lock</span>
+  </button>
+
   <!-- Main JavaScript Logic -->
-  <script type="module" src="js/app.js?v=24"></script>
+  <script type="module" src="js/app.js?v=25"></script>
 </body>
 </html>
