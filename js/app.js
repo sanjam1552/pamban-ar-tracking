@@ -5,7 +5,7 @@ import { MindARThree } from 'mindar-image-three';
 // Configuration constants
 const MODEL_PATH = 'assets/pamban_bridge_standard.glb';
 const TARGETS_PATH = 'assets/targets.mind';
-const SMOOTHING_FACTOR = 0.55; // Snappy jitter smoothing (higher value locks tighter, lower value slides/smooths more)
+const SMOOTHING_FACTOR = 0.28; // Balanced jitter smoothing (no slide on ice, no jitter)
 const GRACE_PERIOD_MS = 1500;  // Grace period before hiding model on tracking loss
 
 // DOM Elements
@@ -232,7 +232,15 @@ function setupModelAnimations(root) {
       return;
     }
 
-    // 2. Turn the rectangular bridge cover (Cube.060) into transparent glass
+    // 2. Shift the rectangular bridge (Empty.008) in place of the dome bridge (Empty.007)
+    if (name === 'empty.008') {
+      node.position.x += (-0.41219756 - 0.063087);
+      node.position.y += (0.02190936 - 0.000519);
+      node.position.z += (0.04240635 - 0.038438);
+      console.log('Shifted rectangular bridge to center:', node.position);
+    }
+
+    // 3. Turn the rectangular bridge cover (Cube.060) into transparent glass
     if (name.includes('cube.060') || name.includes('cube_060')) {
       if (node.isMesh) {
         node.material = new THREE.MeshPhysicalMaterial({
