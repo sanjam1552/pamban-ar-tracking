@@ -183,8 +183,8 @@ function loadBridgeModel() {
         // We rotate X by 90 degrees to lay the model flat/perpendicular relative to the XY card.
         bridgeModel.rotation.x = Math.PI / 2;
         
-        // Scale to 1000.0 to make it large, clear, and visible
-        bridgeModel.scale.set(1000.0, 1000.0, 1000.0);
+        // Scale to 10000.0 to make it large, clear, and visible
+        bridgeModel.scale.set(10000.0, 10000.0, 10000.0);
         bridgeModel.position.set(0, 0, 0);
 
         visualGroup.add(bridgeModel);
