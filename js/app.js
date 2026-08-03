@@ -5,7 +5,7 @@ import { MindARThree } from 'mindar-image-three';
 // Configuration constants
 const MODEL_PATH = 'assets/pamban_bridge_standard.glb';
 const TARGETS_PATH = 'assets/targets.mind';
-const SMOOTHING_FACTOR = 0.15; // Jitter smoothing (lerp factor)
+const SMOOTHING_FACTOR = 0.55; // Snappy jitter smoothing (higher value locks tighter, lower value slides/smooths more)
 const GRACE_PERIOD_MS = 1500;  // Grace period before hiding model on tracking loss
 
 // DOM Elements
