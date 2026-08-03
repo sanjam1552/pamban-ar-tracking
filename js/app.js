@@ -239,6 +239,21 @@ function setupModelAnimations(root) {
       return;
     }
 
+    // Hide any mesh that is physically too large (e.g. Cube.243 size 25x61m)
+    if (node.isMesh) {
+      node.geometry.computeBoundingBox();
+      const box = node.geometry.boundingBox;
+      if (box) {
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        if (size.x > 2.0 || size.y > 2.0 || size.z > 2.0) {
+          console.log('Hiding giant mesh by size:', node.name, size);
+          node.visible = false;
+          return;
+        }
+      }
+    }
+
     // Search for lift span
     if (name.includes('lift') || name.includes('span')) {
       liftSpanMesh = node;
