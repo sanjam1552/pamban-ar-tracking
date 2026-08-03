@@ -219,8 +219,10 @@ async function initFree3DViewer() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x05070c);
 
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-    camera.position.set(0, 0.4, 0.9);
+    // Increase far clipping plane to 1000 to prevent large geometry clipping
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    // Set camera position further back to avoid cutting inside the model
+    camera.position.set(0, 1.0, 2.2);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(width, height);
