@@ -221,23 +221,33 @@ function loadBridgeModel() {
   });
 }
 
-// Look for animated parts in the GLB and hide background/non-bridge meshes using a blacklist
+// Look for animated parts in the GLB, hide dome proposal, and center the rectangular bridge
 function setupModelAnimations(root) {
+  // Shifting offset to center the rectangular bridge (Empty.008 origin)
+  const shiftX = 0.063087;
+  const shiftY = 0.000519;
+  const shiftZ = 0.038438;
+
   root.traverse((node) => {
     const name = node.name.toLowerCase();
 
-    // 1. Remove the entire dome-shaped bridge proposal (Empty.007) and its dome cover
-    if (name === 'empty.007' || name.includes('background')) {
+    // 1. Hide the entire dome-shaped bridge proposal meshes (which have .005 or .007 suffixes) and dome covers
+    if (
+      name.includes('.005') || 
+      name.includes('.007') || 
+      name.includes('background') ||
+      name.includes('empty.007')
+    ) {
       node.visible = false;
       return;
     }
 
-    // 2. Shift the rectangular bridge (Empty.008) in place of the dome bridge (Empty.007)
-    if (name === 'empty.008') {
-      node.position.x += (-0.41219756 - 0.063087);
-      node.position.y += (0.02190936 - 0.000519);
-      node.position.z += (0.04240635 - 0.038438);
-      console.log('Shifted rectangular bridge to center:', node.position);
+    // 2. Shift all active rectangular bridge nodes to center them on the origin
+    // Only shift top-level children of the root model to preserve relative hierarchy
+    if (node.parent === root) {
+      node.position.x -= shiftX;
+      node.position.y -= shiftY;
+      node.position.z -= shiftZ;
     }
 
     // 3. Turn the rectangular bridge cover (Cube.060) into transparent glass
