@@ -221,36 +221,12 @@ function loadBridgeModel() {
   });
 }
 
-// Look for animated parts in the GLB, hide dome proposal, and center the rectangular bridge
+// Look for animated parts in the GLB and hide background/non-bridge meshes using a blacklist
 function setupModelAnimations(root) {
-  // Shifting offset to center the rectangular bridge (Empty.008 origin)
-  const shiftX = 0.063087;
-  const shiftY = 0.000519;
-  const shiftZ = 0.038438;
-
   root.traverse((node) => {
     const name = node.name.toLowerCase();
 
-    // 1. Hide the entire dome-shaped bridge proposal meshes (which have .005 or .007 suffixes) and dome covers
-    if (
-      name.includes('.005') || 
-      name.includes('.007') || 
-      name.includes('background') ||
-      name.includes('empty.007')
-    ) {
-      node.visible = false;
-      return;
-    }
-
-    // 2. Shift all active rectangular bridge nodes to center them on the origin
-    // Only shift top-level children of the root model to preserve relative hierarchy
-    if (node.parent === root) {
-      node.position.x -= shiftX;
-      node.position.y -= shiftY;
-      node.position.z -= shiftZ;
-    }
-
-    // 3. Turn the rectangular bridge cover (Cube.060) into transparent glass
+    // 1. Turn the rectangular bridge cover (Cube.060) into transparent glass
     if (name.includes('cube.060') || name.includes('cube_060')) {
       if (node.isMesh) {
         node.material = new THREE.MeshPhysicalMaterial({
@@ -270,13 +246,13 @@ function setupModelAnimations(root) {
       }
     }
 
-    // Hide specific table structures
+    // 2. Hide specific table structures
     if (name.includes('table')) {
       node.visible = false;
       return;
     }
 
-    // Hide any mesh that is physically too large on all axes (excluding the glass covers we just handled)
+    // 3. Hide any mesh that is physically too large on all axes (excluding the glass covers we just handled)
     if (node.isMesh) {
       node.geometry.computeBoundingBox();
       const box = node.geometry.boundingBox;
