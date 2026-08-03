@@ -729,10 +729,6 @@ trackModeBtn.addEventListener('click', () => {
     camera.quaternion.set(0, 0, 0, 1);
   }
   
-  // Reset model position/rotation to match tracking anchor
-  visualGroup.position.set(0, 0, 0);
-  visualGroup.rotation.set(0, 0, 0);
-  
   instructionBanner.textContent = "Scan the boarding pass to project the bridge";
 });
 
@@ -743,21 +739,11 @@ freeModeBtn.addEventListener('click', () => {
   freeModeBtn.classList.add('active');
   trackModeBtn.classList.remove('active');
   
-  // Center the model in the world coordinate system for OrbitControls
-  visualGroup.position.set(0, 0, 0);
-  visualGroup.rotation.set(0, 0, 0);
-  
-  // Point the camera slightly offset from the model to view it beautifully in 3D
-  if (mindarThree) {
-    const { camera } = mindarThree;
-    camera.position.set(0, 0.4, 0.9);
-    
-    // Enable and update OrbitControls targeting the centered model
-    if (controls) {
-      controls.enabled = true;
-      controls.target.set(0, 0, 0);
-      controls.update();
-    }
+  // Enable OrbitControls targeting the bridge's current position
+  if (controls && mindarThree) {
+    controls.target.copy(visualGroup.position);
+    controls.enabled = true;
+    controls.update();
   }
   
   instructionBanner.textContent = "Drag to rotate | Pinch to zoom | 2-fingers to pan";
