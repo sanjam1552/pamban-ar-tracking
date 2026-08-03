@@ -205,6 +205,102 @@ async function initAR() {
   }
 }
 
+// Initialize 3D Viewer Directly (Bypassing MindAR and camera completely)
+async function initFree3DViewer() {
+  startScreen.classList.add('hidden');
+  loadingScreen.classList.remove('hidden');
+  updateProgress(10, 'Initializing 3D Studio...');
+
+  try {
+    const container = document.querySelector("#ar-container");
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x05070c);
+
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+    camera.position.set(0, 0.4, 0.9);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    // Set up lighting
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444455, 1.2);
+    scene.add(hemiLight);
+
+    const keyLight = new THREE.DirectionalLight(0xfff5ea, 1.5);
+    keyLight.position.set(3, 10, 5);
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0xdbeafe, 0.8);
+    fillLight.position.set(-3, 5, -5);
+    scene.add(fillLight);
+
+    // ACES Tone Mapping
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.3;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    visualGroup = new THREE.Group();
+    scene.add(visualGroup);
+
+    // Setup OrbitControls
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enabled = true;
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 0.1;
+    controls.maxDistance = 10;
+    controls.target.set(0, 0, 0);
+
+    // Load Model
+    updateProgress(35, 'Loading 3D Model...');
+    await loadBridgeModel();
+
+    // Setup interactive events
+    setupClickEvents(camera);
+
+    loadingScreen.classList.add('hidden');
+    infoOverlay.classList.remove('hidden');
+    instructionBanner.classList.remove('hidden');
+    instructionBanner.textContent = "Drag to rotate | Pinch to zoom | 2-fingers to pan";
+
+    // Set visibility state
+    visualGroup.visible = true;
+    isLocked = true;
+    isTracked = true;
+    targetScale = 1.0;
+    currentScale = 1.0;
+
+    // Trigger animations
+    triggerArrivalSequence();
+
+    // Render loop
+    renderer.setAnimationLoop(() => {
+      controls.update();
+      updateARLoop();
+      renderer.render(scene, camera);
+    });
+
+    // Resize handler
+    window.addEventListener('resize', () => {
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    });
+
+  } catch (error) {
+    console.error('3D Viewer Initialization failed:', error);
+    loadingText.innerHTML = `<span style="color: #ef4444">Init Error:</span><br><small style="font-size: 0.8rem; color: #9ca3af">${error.message}</small>`;
+    progressBar.style.backgroundColor = '#ef4444';
+  }
+}
+
 // Update loading progress bar
 function updateProgress(percent, text) {
   progressBar.style.width = `${percent}%`;
@@ -748,3 +844,7 @@ freeModeBtn.addEventListener('click', () => {
   
   instructionBanner.textContent = "Drag to rotate | Pinch to zoom | 2-fingers to pan";
 });
+
+// Bind 3D skip button click
+const skipBtn = document.getElementById('skip-btn');
+skipBtn.addEventListener('click', initFree3DViewer);
