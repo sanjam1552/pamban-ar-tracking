@@ -2,127 +2,85 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-  <title>Pamban Bridge WebAR Experience | RVNL</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>New Pamban Bridge 3D Experience | RVNL</title>
   
   <!-- Font Imports -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
   
-  <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="css/style.css">
+  <!-- Import Google model-viewer component -->
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
-  <!-- Import map to load MindAR and Three.js as ES modules -->
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-        "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
-      }
-    }
-  </script>
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="css/style.css?v=33">
 </head>
 <body>
-  <!-- Main AR rendering container -->
-  <div id="ar-container"></div>
-
-  <!-- Starting Screen UI (User gesture required for camera permission) -->
-  <div id="start-screen" class="ui-overlay">
-    <div class="overlay-content">
-      <div class="logo-container">
-        <span class="rvnl-tag">RVNL</span>
-        <span class="ar-tag">AR EXPERIENCE</span>
-      </div>
-      <h1 class="title">Experience the<br><span class="highlight">Pamban Bridge</span><br>in AR</h1>
-      <p class="subtitle">Witness India's first vertical lift railway sea bridge rise dynamically from your boarding pass.</p>
-      
-      <div class="actions">
-        <button id="start-btn" class="btn">
-          LAUNCH AR EXPERIENCE <span class="btn-arrow">→</span>
-        </button>
-        <button id="skip-btn" class="btn btn-secondary">
-          🌐 VIEW IN 3D DIRECTLY
-        </button>
-      </div>
-
-      <div class="footer-note">
-        Requires camera access. Works best in a well-lit room.
-      </div>
+  <!-- Header HUD -->
+  <header class="hud-header">
+    <div class="logo-container-compact">
+      <span class="rvnl-tag">RVNL</span>
+      <span class="ar-tag">3D INTERACTIVE</span>
     </div>
-  </div>
-
-  <!-- Loading State UI (After click, before AR load) -->
-  <div id="loading-screen" class="ui-overlay hidden">
-    <div class="spinner-container">
-      <div class="ar-spinner"></div>
-      <p class="loading-text">Initializing AR Engine...</p>
-      <div class="progress-bar-container">
-        <div id="progress-bar" class="progress-bar"></div>
-      </div>
+    <div class="title-container">
+      <h3>NEW PAMBAN BRIDGE</h3>
+      <p>India's First Vertical Lift Sea Bridge</p>
     </div>
-  </div>
+  </header>
 
-  <!-- Scanning Instructions Overlay (Active when camera is running but target not found) -->
-  <div id="scanning-overlay" class="ui-overlay hidden">
-    <div class="scan-frame-container">
-      <div class="scan-frame-corner top-left"></div>
-      <div class="scan-frame-corner top-right"></div>
-      <div class="scan-frame-corner bottom-left"></div>
-      <div class="scan-frame-corner bottom-right"></div>
-      <div class="scan-line"></div>
-    </div>
-    <div class="instructions-card">
-      <span class="icon-scan">📷</span>
-      <p>Point your camera at the <strong>RVNL Boarding Pass</strong></p>
-    </div>
-  </div>
+  <!-- 3D Studio & AR Viewer -->
+  <model-viewer
+    id="bridge-viewer"
+    src="assets/pamban_bridge_standard.glb"
+    ar
+    ar-modes="webxr scene-viewer quick-look"
+    camera-controls
+    shadow-intensity="1"
+    environment-image="neutral"
+    exposure="1.2"
+    interaction-prompt="auto"
+    camera-orbit="45deg 75deg 2.5m"
+    min-camera-orbit="auto auto 0.5m"
+    max-camera-orbit="auto auto 10m"
+    touch-action="none">
 
-  <!-- Hotspot Info Panel (Pops up when a 3D hotspot is clicked) -->
+    <!-- Pulsing Hotspots on the 3D Model -->
+    <button class="hotspot-pin" slot="hotspot-lift" data-position="0 0.05 0.05" data-normal="0 0 1" data-title="Scherzer Vertical Lift Span" data-desc="A 72.5m rolling lift span that raises vertically to allow ships and vessels to navigate the sea channel below.">
+      <div class="hotspot-pulse"></div>
+    </button>
+
+    <button class="hotspot-pin" slot="hotspot-piers" data-position="-0.4 0 0.02" data-normal="0 0 1" data-title="Marine Substructure" data-desc="Consists of concrete piers designed with marine-grade materials to withstand the high-salinity environment of the Palk Strait.">
+      <div class="hotspot-pulse"></div>
+    </button>
+
+    <button class="hotspot-pin" slot="hotspot-length" data-position="0.4 0 0.02" data-normal="0 0 1" data-title="2.07 km Sea Approach" data-desc="Connecting Rameswaram Island to mainland India via 143 steel girder spans, standing as a marvel of railway marine engineering.">
+      <div class="hotspot-pulse"></div>
+    </button>
+
+    <!-- Custom AR Launch Button -->
+    <button slot="ar-button" id="ar-trigger-btn">
+      🚀 VIEW IN YOUR ROOM (AR)
+    </button>
+  </model-viewer>
+
+  <!-- Hotspot Details Modal -->
   <div id="hotspot-modal" class="hidden">
     <div class="modal-content">
       <button id="modal-close-btn">&times;</button>
       <div class="modal-header">
-        <span id="modal-badge" class="badge">SPECIFICATION</span>
+        <span class="badge">SPECIFICATION</span>
         <h4 id="modal-title">Hotspot Details</h4>
       </div>
       <p id="modal-desc">Details about this section of the Pamban Bridge will appear here.</p>
     </div>
   </div>
 
-  <!-- Main Info Overlay (Visible when target is tracked) -->
-  <div id="info-overlay" class="ui-overlay hidden">
-    <div class="card-details">
-      <div class="card-header-compact">
-        <h3>NEW PAMBAN BRIDGE</h3>
-        <span class="badge">LIVE AR</span>
-      </div>
-      
-      <div class="stats-grid-compact">
-        <span class="stat-item-compact"><strong>Length:</strong> 2.07 km</span>
-        <span class="stat-separator">|</span>
-        <span class="stat-item-compact"><strong>Lift Span:</strong> 72.5 m</span>
-      </div>
-    </div>
+  <!-- Swipe Instruction Toast -->
+  <div id="instruction-toast" class="toast">
+    Drag to rotate | Pinch to zoom | Tap points for specs
   </div>
 
-  <!-- Instruction Banner -->
-  <div id="instruction-banner" class="hud-instruction hidden">
-    Scan the boarding pass to project the bridge
-  </div>
-
-  <!-- Floating Bottom Mode Toggle (Pill switch) -->
-  <div id="mode-toggle-container" class="hud-pill-container hidden">
-    <button id="track-mode-btn" class="hud-pill-btn active">
-      <span>🎴</span> TRACK CARD
-    </button>
-    <button id="free-mode-btn" class="hud-pill-btn">
-      <span>🌐</span> 3D FREE VIEW
-    </button>
-  </div>
-
-  <!-- Main JavaScript Logic -->
-  <script type="module" src="js/app.js?v=32"></script>
+  <script type="module" src="js/app.js?v=33"></script>
 </body>
 </html>
