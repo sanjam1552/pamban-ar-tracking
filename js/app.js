@@ -211,6 +211,9 @@ function loadBridgeModel() {
       },
       (error) => {
         console.error('Error loading GLTF model:', error);
+        loadingScreen.classList.remove('hidden');
+        loadingText.innerHTML = `<span style="color: #ef4444">GLB Load Error:</span><br><small style="font-size: 0.8rem; color: #9ca3af">${error.message || error}</small>`;
+        progressBar.style.backgroundColor = '#ef4444';
         buildPlaceholderModel();
         resolve();
       }
