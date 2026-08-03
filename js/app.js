@@ -183,8 +183,8 @@ function loadBridgeModel() {
         // We rotate X by 90 degrees to lay the model flat/perpendicular relative to the XY card.
         bridgeModel.rotation.x = Math.PI / 2;
         
-        // Scale to 10000.0 to make it large, clear, and visible
-        bridgeModel.scale.set(10000.0, 10000.0, 10000.0);
+        // Scale to 4500.0 to fit nicely on screen
+        bridgeModel.scale.set(4500.0, 4500.0, 4500.0);
         bridgeModel.position.set(0, 0, 0);
 
         visualGroup.add(bridgeModel);
@@ -226,12 +226,14 @@ function setupModelAnimations(root) {
   root.traverse((node) => {
     const name = node.name.toLowerCase();
 
-    // Turn background/dome covers into beautiful transparent glass instead of hiding them
-    if (
-      name.includes('background') || 
-      name.includes('cube.060') || 
-      name.includes('cube_060')
-    ) {
+    // 1. Remove the entire dome-shaped bridge proposal (Empty.007) and its dome cover
+    if (name === 'empty.007' || name.includes('background')) {
+      node.visible = false;
+      return;
+    }
+
+    // 2. Turn the rectangular bridge cover (Cube.060) into transparent glass
+    if (name.includes('cube.060') || name.includes('cube_060')) {
       if (node.isMesh) {
         node.material = new THREE.MeshPhysicalMaterial({
           color: 0xdbeafe,       // Light ice blue tint
@@ -245,7 +247,7 @@ function setupModelAnimations(root) {
           side: THREE.DoubleSide
         });
         node.visible = true;
-        console.log('Converted to glass cover:', node.name);
+        console.log('Converted rectangular cover to glass:', node.name);
         return;
       }
     }
