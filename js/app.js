@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MindARThree } from 'mindar-image-three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // Configuration constants
 const MODEL_PATH = 'assets/pamban_bridge_standard.glb';
@@ -17,6 +18,12 @@ const startBtn = document.getElementById('start-btn');
 const progressBar = document.getElementById('progress-bar');
 const loadingText = document.querySelector('.loading-text');
 
+// Mode Switch DOM Elements
+const modeToggleContainer = document.getElementById('mode-toggle-container');
+const trackModeBtn = document.getElementById('track-mode-btn');
+const freeModeBtn = document.getElementById('free-mode-btn');
+const instructionBanner = document.getElementById('instruction-banner');
+
 // Hotspot DOM Elements
 const hotspotModal = document.getElementById('hotspot-modal');
 const modalTitle = document.getElementById('modal-title');
@@ -27,6 +34,7 @@ let mindarThree = null;
 let bridgeModel = null;
 let visualGroup = null; // Group containing the model and animations for smoothing
 let anchorGroup = null; // The raw MindAR anchor group
+let controls = null;    // OrbitControls for standard 3D free viewport navigation
 
 // Raycasting for interactive hotspots
 const raycaster = new THREE.Raycaster();
@@ -41,24 +49,8 @@ let targetLostTimeout = null;
 let currentScale = 0;
 let targetScale = 0;
 
-// Lock/Freeze state
-const lockBtn = document.getElementById('lock-btn');
-const lockBtnIcon = document.getElementById('lock-btn-icon');
-const lockBtnText = document.getElementById('lock-btn-text');
+// Lock/Free-View state
 let isLocked = false;
-
-// Touch gesture state variables
-let previousTouchX = 0;
-let previousTouchY = 0;
-let previousTouchDistance = 0;
-let previousTouchAngle = 0;
-
-// Gyroscope stabilization variables for Lock Mode
-let initialPhoneAlpha = null;
-let initialPhoneBeta = null;
-let currentPhoneAlpha = 0;
-let currentPhoneBeta = 0;
-let manualRotationZ = 0; // Touch twist rotation offset
 
 // Sub-objects for animations
 let trainGroup = null;
@@ -143,7 +135,14 @@ async function initAR() {
 
     // Setup interactive click/tap events
     setupClickEvents(camera);
-    setupTouchControls();
+
+    // Setup OrbitControls for free view mode
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enabled = false;
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 0.1;
+    controls.maxDistance = 10;
 
     // Start AR Engine
     updateProgress(85, 'Starting Camera...');
@@ -159,7 +158,12 @@ async function initAR() {
       isTracked = true;
       scanningOverlay.classList.add('hidden');
       infoOverlay.classList.remove('hidden');
-      lockBtn.classList.remove('hidden'); // Show lock button floating bubble!
+      modeToggleContainer.classList.remove('hidden'); // Show mode pill toggle!
+      instructionBanner.classList.remove('hidden'); // Show instruction banner!
+      
+      if (!isLocked) {
+        instructionBanner.textContent = "Scan the boarding pass to project the bridge";
+      }
 
       if (isFirstDetection) {
         triggerArrivalSequence();
@@ -171,14 +175,15 @@ async function initAR() {
 
     anchor.onTargetLost = () => {
       isTracked = false;
-      if (isLocked) return; // Bypass hiding model when locked
+      if (isLocked) return; // Bypass hiding model when in Free View mode
       
       targetLostTimeout = setTimeout(() => {
         if (!isTracked && !isLocked) {
           targetScale = 0.0;
           infoOverlay.classList.add('hidden');
           scanningOverlay.classList.remove('hidden');
-          lockBtn.classList.add('hidden'); // Hide lock button bubble!
+          modeToggleContainer.classList.add('hidden');
+          instructionBanner.classList.add('hidden');
           closeHotspotModal();
         }
       }, GRACE_PERIOD_MS);
@@ -186,6 +191,9 @@ async function initAR() {
 
     // Run Render/Animation loop
     renderer.setAnimationLoop(() => {
+      if (isLocked && controls.enabled) {
+        controls.update(); // Enable smooth orbit controls physics
+      }
       updateARLoop();
       renderer.render(scene, camera);
     });
@@ -583,18 +591,10 @@ function updateARLoop() {
 
   // 1. Interpolation / Lerping for Jitter Smoothing & Grace Period Hiding
   if (isLocked) {
-    // Keep model visible and fully scaled when position is locked
+    // Keep model visible and fully scaled in Free View mode
     currentScale += (1.0 - currentScale) * SMOOTHING_FACTOR;
     visualGroup.scale.set(currentScale, currentScale, currentScale);
     visualGroup.visible = true;
-
-    // Apply gyroscope stabilization: counter phone rotation on Y (yaw) and X (pitch) axes
-    const yaw = (currentPhoneAlpha * Math.PI) / 180;
-    const pitch = (currentPhoneBeta * Math.PI) / 180;
-
-    // Combine gyro rotation and manual touch twist rotation
-    const gyroEuler = new THREE.Euler(-pitch, 0, -yaw + manualRotationZ, 'YXZ');
-    visualGroup.quaternion.setFromEuler(gyroEuler);
   } else if (isTracked) {
     // Smoothly transition visualGroup scale up
     currentScale += (targetScale - currentScale) * SMOOTHING_FACTOR;
@@ -702,108 +702,63 @@ function updateARLoop() {
   }
 }
 
-// Setup touch controls and gyroscope sensors for Lock Mode
-function setupTouchControls() {
-  // Gyroscope tracking for holographic Lock Mode
-  window.addEventListener('deviceorientation', (e) => {
-    if (!isLocked) {
-      initialPhoneAlpha = null;
-      initialPhoneBeta = null;
-      return;
-    }
-
-    if (e.alpha !== null && e.beta !== null) {
-      if (initialPhoneAlpha === null) {
-        initialPhoneAlpha = e.alpha;
-        initialPhoneBeta = e.beta;
-      }
-      // Calculate delta movement from lock snapshot
-      currentPhoneAlpha = e.alpha - initialPhoneAlpha;
-      currentPhoneBeta = e.beta - initialPhoneBeta;
-    }
-  }, true);
-
-  // Attach directly to window to bypass WebGL canvas pointer-events blocking
-  window.addEventListener('touchstart', (e) => {
-    if (!isLocked) return;
-    e.preventDefault(); // Prevents default browser panning/zooming behavior
-    
-    if (e.touches.length === 1) {
-      previousTouchX = e.touches[0].clientX;
-      previousTouchY = e.touches[0].clientY;
-    } else if (e.touches.length === 2) {
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      previousTouchDistance = Math.sqrt(dx*dx + dy*dy);
-      previousTouchAngle = Math.atan2(dy, dx);
-    }
-  }, { passive: false }); // Explicitly mark non-passive to allow preventDefault
-
-  window.addEventListener('touchmove', (e) => {
-    if (!isLocked) return;
-    e.preventDefault(); // Prevents default browser panning/zooming behavior
-    
-    if (e.touches.length === 1) {
-      // 1-finger drag translates the model position
-      const touchX = e.touches[0].clientX;
-      const touchY = e.touches[0].clientY;
-      
-      const deltaX = (touchX - previousTouchX) * 0.0035;
-      const deltaY = (touchY - previousTouchY) * -0.0035; // invert screen Y
-
-      visualGroup.position.x += deltaX;
-      visualGroup.position.y += deltaY;
-
-      previousTouchX = touchX;
-      previousTouchY = touchY;
-    } else if (e.touches.length === 2) {
-      // 2-finger pinch scales and twists rotates the model
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      const distance = Math.sqrt(dx*dx + dy*dy);
-      const angle = Math.atan2(dy, dx);
-
-      // Pinch to scale
-      if (previousTouchDistance > 0) {
-        const scaleFactor = distance / previousTouchDistance;
-        const newScale = visualGroup.scale.x * scaleFactor;
-        // Limit scale to a reasonable range relative to raw standard scale
-        if (newScale > 0.1 && newScale < 8.0) {
-          visualGroup.scale.set(newScale, newScale, newScale);
-        }
-      }
-      
-      // Update manual Z rotation offset instead of overwriting directly
-      const deltaAngle = angle - previousTouchAngle;
-      manualRotationZ += deltaAngle;
-
-      previousTouchDistance = distance;
-      previousTouchAngle = angle;
-    }
-  }, { passive: false }); // Explicitly mark non-passive to allow preventDefault
-}
-
 // Clock for time-based ripple & pulse animations
 const clock = new THREE.Clock();
 
 // Bind Launch Button Click
 startBtn.addEventListener('click', initAR);
 
-// Bind Lock Button Click Toggle
-lockBtn.addEventListener('click', () => {
-  isLocked = !isLocked;
-  if (isLocked) {
-    lockBtn.classList.add('locked');
-    lockBtnIcon.textContent = '🔓';
-    // Force gyroscope baseline reset on next deviceorientation read
-    initialPhoneAlpha = null;
-    initialPhoneBeta = null;
-  } else {
-    lockBtn.classList.remove('locked');
-    lockBtnIcon.textContent = '🔒';
-    targetScale = 1.0;
-    // Reset manual rotation offsets
-    manualRotationZ = 0;
-    visualGroup.rotation.set(0, 0, 0);
+// Bind Mode Toggle button clicks
+trackModeBtn.addEventListener('click', () => {
+  if (!isLocked) return; // Already active
+  
+  isLocked = false;
+  trackModeBtn.classList.add('active');
+  freeModeBtn.classList.remove('active');
+  
+  // Disable OrbitControls
+  if (controls) {
+    controls.enabled = false;
   }
+  
+  // Reset camera position and rotation so MindAR can track correctly
+  if (mindarThree) {
+    const { camera } = mindarThree;
+    camera.position.set(0, 0, 0);
+    camera.rotation.set(0, 0, 0);
+    camera.quaternion.set(0, 0, 0, 1);
+  }
+  
+  // Reset model position/rotation to match tracking anchor
+  visualGroup.position.set(0, 0, 0);
+  visualGroup.rotation.set(0, 0, 0);
+  
+  instructionBanner.textContent = "Scan the boarding pass to project the bridge";
+});
+
+freeModeBtn.addEventListener('click', () => {
+  if (isLocked) return; // Already active
+  
+  isLocked = true;
+  freeModeBtn.classList.add('active');
+  trackModeBtn.classList.remove('active');
+  
+  // Center the model in the world coordinate system for OrbitControls
+  visualGroup.position.set(0, 0, 0);
+  visualGroup.rotation.set(0, 0, 0);
+  
+  // Point the camera slightly offset from the model to view it beautifully in 3D
+  if (mindarThree) {
+    const { camera } = mindarThree;
+    camera.position.set(0, 0.4, 0.9);
+    
+    // Enable and update OrbitControls targeting the centered model
+    if (controls) {
+      controls.enabled = true;
+      controls.target.set(0, 0, 0);
+      controls.update();
+    }
+  }
+  
+  instructionBanner.textContent = "Drag to rotate | Pinch to zoom | 2-fingers to pan";
 });

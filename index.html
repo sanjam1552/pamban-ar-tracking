@@ -105,12 +105,22 @@
     </div>
   </div>
 
-  <!-- Floating Lock Button (Visible after model detection) -->
-  <button id="lock-btn" class="lock-btn-hud hidden">
-    <span id="lock-btn-icon">🔒</span><span id="lock-btn-text" class="sr-only">Lock</span>
-  </button>
+  <!-- Instruction Banner -->
+  <div id="instruction-banner" class="hud-instruction hidden">
+    Scan the boarding pass to project the bridge
+  </div>
+
+  <!-- Floating Bottom Mode Toggle (Pill switch) -->
+  <div id="mode-toggle-container" class="hud-pill-container hidden">
+    <button id="track-mode-btn" class="hud-pill-btn active">
+      <span>🎴</span> TRACK CARD
+    </button>
+    <button id="free-mode-btn" class="hud-pill-btn">
+      <span>🌐</span> 3D FREE VIEW
+    </button>
+  </div>
 
   <!-- Main JavaScript Logic -->
-  <script type="module" src="js/app.js?v=27"></script>
+  <script type="module" src="js/app.js?v=28"></script>
 </body>
 </html>

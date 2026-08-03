@@ -145,36 +145,77 @@ h1, h2, h3, h4 {
   transform: translateX(4px);
 }
 
-.lock-btn-hud {
+.hud-pill-container {
   position: absolute;
   bottom: 2rem;
-  right: 2rem;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: none;
-  font-size: 1.6rem;
-  color: white;
-  cursor: pointer;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  box-shadow: 0 4px 20px rgba(249, 115, 22, 0.4);
-  transition: transform 0.2s, background-color 0.3s, opacity 0.3s, visibility 0.3s;
-  pointer-events: auto;
+  background: rgba(13, 17, 28, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px;
+  border-radius: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   z-index: 99;
+  pointer-events: auto;
+  transition: opacity 0.3s, visibility 0.3s;
 }
 
-.lock-btn-hud.locked {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
-}
-
-.lock-btn-hud.hidden {
+.hud-pill-container.hidden {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+}
+
+.hud-pill-btn {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.6rem 1.2rem;
+  border-radius: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hud-pill-btn.active {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.35);
+}
+
+.hud-instruction {
+  position: absolute;
+  bottom: 5.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #facc15;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(250, 204, 21, 0.15);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+  z-index: 98;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.3s, visibility 0.3s;
+}
+
+.hud-instruction.hidden {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .footer-note {
