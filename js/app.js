@@ -41,6 +41,18 @@ let targetLostTimeout = null;
 let currentScale = 0;
 let targetScale = 0;
 
+// Lock/Freeze state
+const lockBtn = document.getElementById('lock-btn');
+const lockBtnIcon = document.getElementById('lock-btn-icon');
+const lockBtnText = document.getElementById('lock-btn-text');
+let isLocked = false;
+
+// Touch gesture state variables
+let previousTouchX = 0;
+let previousTouchY = 0;
+let previousTouchDistance = 0;
+let previousTouchAngle = 0;
+
 // Sub-objects for animations
 let trainGroup = null;
 let liftSpanMesh = null;
@@ -124,6 +136,7 @@ async function initAR() {
 
     // Setup interactive click/tap events
     setupClickEvents(camera);
+    setupTouchControls();
 
     // Start AR Engine
     updateProgress(85, 'Starting Camera...');
@@ -150,8 +163,10 @@ async function initAR() {
 
     anchor.onTargetLost = () => {
       isTracked = false;
+      if (isLocked) return; // Bypass hiding model when locked
+      
       targetLostTimeout = setTimeout(() => {
-        if (!isTracked) {
+        if (!isTracked && !isLocked) {
           targetScale = 0.0;
           infoOverlay.classList.add('hidden');
           scanningOverlay.classList.remove('hidden');
@@ -558,7 +573,12 @@ function updateARLoop() {
   if (!isModelLoaded) return;
 
   // 1. Interpolation / Lerping for Jitter Smoothing & Grace Period Hiding
-  if (isTracked) {
+  if (isLocked) {
+    // Keep model visible and fully scaled when position is locked
+    currentScale += (1.0 - currentScale) * SMOOTHING_FACTOR;
+    visualGroup.scale.set(currentScale, currentScale, currentScale);
+    visualGroup.visible = true;
+  } else if (isTracked) {
     // Smoothly transition visualGroup scale up
     currentScale += (targetScale - currentScale) * SMOOTHING_FACTOR;
     visualGroup.scale.set(currentScale, currentScale, currentScale);
@@ -654,7 +674,7 @@ function updateARLoop() {
           liftDirection = 0; // Stop at bottom
           // Schedule lift span to rise again in 5 seconds
           setTimeout(() => {
-            if (isTracked) liftDirection = 1;
+            if (isTracked || isLocked) liftDirection = 1;
           }, 5000);
         }
       }
@@ -665,8 +685,84 @@ function updateARLoop() {
   }
 }
 
+// Setup touch controls for dragging, scaling, and rotating the model in lock mode
+function setupTouchControls() {
+  const container = document.getElementById('ar-container');
+  
+  container.addEventListener('touchstart', (e) => {
+    if (!isLocked) return;
+    if (e.touches.length === 1) {
+      previousTouchX = e.touches[0].clientX;
+      previousTouchY = e.touches[0].clientY;
+    } else if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      previousTouchDistance = Math.sqrt(dx*dx + dy*dy);
+      previousTouchAngle = Math.atan2(dy, dx);
+    }
+  });
+
+  container.addEventListener('touchmove', (e) => {
+    if (!isLocked) return;
+    
+    if (e.touches.length === 1) {
+      // 1-finger drag translates the model position
+      const touchX = e.touches[0].clientX;
+      const touchY = e.touches[0].clientY;
+      
+      const deltaX = (touchX - previousTouchX) * 0.003;
+      const deltaY = (touchY - previousTouchY) * -0.003; // invert screen Y
+
+      visualGroup.position.x += deltaX;
+      visualGroup.position.y += deltaY;
+
+      previousTouchX = touchX;
+      previousTouchY = touchY;
+    } else if (e.touches.length === 2) {
+      // 2-finger pinch scales and twists rotates the model
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const distance = Math.sqrt(dx*dx + dy*dy);
+      const angle = Math.atan2(dy, dx);
+
+      // Pinch to scale
+      if (previousTouchDistance > 0) {
+        const scaleFactor = distance / previousTouchDistance;
+        const newScale = visualGroup.scale.x * scaleFactor;
+        // Limit scale to a reasonable range
+        if (newScale > 0.2 && newScale < 8.0) {
+          visualGroup.scale.set(newScale, newScale, newScale);
+        }
+      }
+      
+      // Twist to rotate around the card normal (Z axis)
+      const deltaAngle = angle - previousTouchAngle;
+      visualGroup.rotation.z += deltaAngle;
+
+      previousTouchDistance = distance;
+      previousTouchAngle = angle;
+    }
+  });
+}
+
 // Clock for time-based ripple & pulse animations
 const clock = new THREE.Clock();
 
 // Bind Launch Button Click
 startBtn.addEventListener('click', initAR);
+
+// Bind Lock Button Click Toggle
+lockBtn.addEventListener('click', () => {
+  isLocked = !isLocked;
+  if (isLocked) {
+    lockBtn.classList.add('locked');
+    lockBtnIcon.textContent = '🔓';
+    lockBtnText.textContent = 'RELEASE TO CARD';
+  } else {
+    lockBtn.classList.remove('locked');
+    lockBtnIcon.textContent = '🔒';
+    lockBtnText.textContent = 'LOCK TO SCREEN';
+    // Re-align position to anchor group when returning to tracking
+    targetScale = 1.0;
+  }
+});

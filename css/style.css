@@ -143,6 +143,19 @@ h1, h2, h3, h4 {
   transform: translateX(4px);
 }
 
+.lock-btn-hud {
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.25rem;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+}
+
+.lock-btn-hud.locked {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
 .footer-note {
   font-size: 0.75rem;
   color: #6b7280;
