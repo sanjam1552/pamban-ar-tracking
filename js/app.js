@@ -53,6 +53,13 @@ let previousTouchY = 0;
 let previousTouchDistance = 0;
 let previousTouchAngle = 0;
 
+// Gyroscope stabilization variables for Lock Mode
+let initialPhoneAlpha = null;
+let initialPhoneBeta = null;
+let currentPhoneAlpha = 0;
+let currentPhoneBeta = 0;
+let manualRotationZ = 0; // Touch twist rotation offset
+
 // Sub-objects for animations
 let trainGroup = null;
 let liftSpanMesh = null;
@@ -580,6 +587,14 @@ function updateARLoop() {
     currentScale += (1.0 - currentScale) * SMOOTHING_FACTOR;
     visualGroup.scale.set(currentScale, currentScale, currentScale);
     visualGroup.visible = true;
+
+    // Apply gyroscope stabilization: counter phone rotation on Y (yaw) and X (pitch) axes
+    const yaw = (currentPhoneAlpha * Math.PI) / 180;
+    const pitch = (currentPhoneBeta * Math.PI) / 180;
+
+    // Combine gyro rotation and manual touch twist rotation
+    const gyroEuler = new THREE.Euler(-pitch, 0, -yaw + manualRotationZ, 'YXZ');
+    visualGroup.quaternion.setFromEuler(gyroEuler);
   } else if (isTracked) {
     // Smoothly transition visualGroup scale up
     currentScale += (targetScale - currentScale) * SMOOTHING_FACTOR;
@@ -687,8 +702,27 @@ function updateARLoop() {
   }
 }
 
-// Setup touch controls for dragging, scaling, and rotating the model in lock mode
+// Setup touch controls and gyroscope sensors for Lock Mode
 function setupTouchControls() {
+  // Gyroscope tracking for holographic Lock Mode
+  window.addEventListener('deviceorientation', (e) => {
+    if (!isLocked) {
+      initialPhoneAlpha = null;
+      initialPhoneBeta = null;
+      return;
+    }
+
+    if (e.alpha !== null && e.beta !== null) {
+      if (initialPhoneAlpha === null) {
+        initialPhoneAlpha = e.alpha;
+        initialPhoneBeta = e.beta;
+      }
+      // Calculate delta movement from lock snapshot
+      currentPhoneAlpha = e.alpha - initialPhoneAlpha;
+      currentPhoneBeta = e.beta - initialPhoneBeta;
+    }
+  }, true);
+
   // Attach directly to window to bypass WebGL canvas pointer-events blocking
   window.addEventListener('touchstart', (e) => {
     if (!isLocked) return;
@@ -739,9 +773,9 @@ function setupTouchControls() {
         }
       }
       
-      // Twist to rotate around the card normal (Z axis)
+      // Update manual Z rotation offset instead of overwriting directly
       const deltaAngle = angle - previousTouchAngle;
-      visualGroup.rotation.z += deltaAngle;
+      manualRotationZ += deltaAngle;
 
       previousTouchDistance = distance;
       previousTouchAngle = angle;
@@ -761,9 +795,15 @@ lockBtn.addEventListener('click', () => {
   if (isLocked) {
     lockBtn.classList.add('locked');
     lockBtnIcon.textContent = '🔓';
+    // Force gyroscope baseline reset on next deviceorientation read
+    initialPhoneAlpha = null;
+    initialPhoneBeta = null;
   } else {
     lockBtn.classList.remove('locked');
     lockBtnIcon.textContent = '🔒';
     targetScale = 1.0;
+    // Reset manual rotation offsets
+    manualRotationZ = 0;
+    visualGroup.rotation.set(0, 0, 0);
   }
 });
