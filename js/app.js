@@ -223,16 +223,16 @@ function setupModelAnimations(root) {
   root.traverse((node) => {
     const name = node.name.toLowerCase();
 
-    // Hide specific background/table/base structures (applies to all nodes, groups, and meshes)
+    // Hide specific background/table/base/product structures (applies to all nodes, groups, and meshes)
     if (
       name.includes('background') || 
       name.includes('cube.060') || 
       name.includes('cube_060') || 
-      name.includes('table.002') || 
-      name.includes('table_002') ||
+      name.includes('table') || 
+      name.includes('product') ||
       name === 'base'
     ) {
-      console.log('Hiding background/table node:', node.name);
+      console.log('Hiding background/table/product node:', node.name);
       node.visible = false;
       return;
     }
