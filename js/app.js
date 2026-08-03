@@ -692,6 +692,8 @@ function setupTouchControls() {
   // Attach directly to window to bypass WebGL canvas pointer-events blocking
   window.addEventListener('touchstart', (e) => {
     if (!isLocked) return;
+    e.preventDefault(); // Prevents default browser panning/zooming behavior
+    
     if (e.touches.length === 1) {
       previousTouchX = e.touches[0].clientX;
       previousTouchY = e.touches[0].clientY;
@@ -701,10 +703,11 @@ function setupTouchControls() {
       previousTouchDistance = Math.sqrt(dx*dx + dy*dy);
       previousTouchAngle = Math.atan2(dy, dx);
     }
-  });
+  }, { passive: false }); // Explicitly mark non-passive to allow preventDefault
 
   window.addEventListener('touchmove', (e) => {
     if (!isLocked) return;
+    e.preventDefault(); // Prevents default browser panning/zooming behavior
     
     if (e.touches.length === 1) {
       // 1-finger drag translates the model position
@@ -743,7 +746,7 @@ function setupTouchControls() {
       previousTouchDistance = distance;
       previousTouchAngle = angle;
     }
-  });
+  }, { passive: false }); // Explicitly mark non-passive to allow preventDefault
 }
 
 // Clock for time-based ripple & pulse animations

@@ -13,6 +13,7 @@ body {
   overflow: hidden;
   width: 100vw;
   height: 100vh;
+  touch-action: none; /* Prevents mobile browser pull-to-refresh & zoom */
 }
 
 h1, h2, h3, h4 {
@@ -28,6 +29,7 @@ h1, h2, h3, h4 {
   left: 0;
   z-index: 1;
   overflow: hidden;
+  touch-action: none; /* Handled programmatically in JS */
 }
 
 /* UI Overlays styling */
