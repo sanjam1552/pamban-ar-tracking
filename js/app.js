@@ -104,6 +104,11 @@ async function initAR() {
     fillLight.position.set(-3, 5, -5);
     scene.add(fillLight);
 
+    // Set up premium tone mapping and color space for realistic cinematic lighting
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.3;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
     // Set up visual group for interpolation (smoothing)
     visualGroup = new THREE.Group();
     visualGroup.visible = false;
@@ -186,6 +191,8 @@ function loadBridgeModel() {
 
         // We rotate X by 90 degrees to lay the model flat/perpendicular relative to the XY card.
         bridgeModel.rotation.x = Math.PI / 2;
+        // Rotate Z by 90 degrees to align the bridge horizontally along the card's long axis
+        bridgeModel.rotation.z = Math.PI / 2;
         
         // Scale to 4500.0 to fit nicely on screen
         bridgeModel.scale.set(4500.0, 4500.0, 4500.0);
