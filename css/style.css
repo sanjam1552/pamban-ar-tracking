@@ -1,0 +1,444 @@
+/* Reset & Base Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #05070c;
+  color: #f3f4f6;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* AR View Container */
+#ar-container {
+  width: 100vw;
+  height: 100vh;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  overflow: hidden;
+}
+
+/* UI Overlays styling */
+.ui-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.5s;
+  pointer-events: none;
+}
+
+.ui-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* 1. Start Screen UI */
+#start-screen {
+  background: linear-gradient(135deg, rgba(5, 7, 12, 0.96) 0%, rgba(13, 17, 28, 0.99) 100%);
+  padding: 2rem;
+  text-align: center;
+  pointer-events: auto;
+}
+
+.overlay-content {
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.logo-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.rvnl-tag {
+  background: #f97316;
+  color: #fff;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+}
+
+.ar-tag {
+  color: #9ca3af;
+  border-left: 1px solid #374151;
+  padding-left: 0.5rem;
+}
+
+.title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.highlight {
+  background: linear-gradient(to right, #f97316, #facc15);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: #9ca3af;
+  line-height: 1.6;
+  font-weight: 300;
+  margin-bottom: 1rem;
+}
+
+/* Premium Button Styling */
+.btn {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 4px 20px rgba(249, 115, 22, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+  pointer-events: auto;
+}
+
+.btn:active {
+  transform: scale(0.96);
+  box-shadow: 0 2px 10px rgba(249, 115, 22, 0.3);
+}
+
+.btn-arrow {
+  transition: transform 0.2s;
+}
+
+.btn:hover .btn-arrow {
+  transform: translateX(4px);
+}
+
+.footer-note {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 1rem;
+}
+
+/* 2. Loading Screen */
+#loading-screen {
+  background: rgba(5, 7, 12, 0.92);
+}
+
+.spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ar-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(249, 115, 22, 0.1);
+  border-radius: 50%;
+  border-top-color: #f97316;
+  animation: spin 1s ease-in-out infinite;
+}
+
+.loading-text {
+  font-size: 1rem;
+  color: #e5e7eb;
+  font-weight: 500;
+}
+
+.progress-bar-container {
+  width: 160px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  width: 0%;
+  height: 100%;
+  background: #f97316;
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+/* 3. Scanning Instructions Overlay */
+#scanning-overlay {
+  background: rgba(5, 7, 12, 0.3);
+  pointer-events: none;
+}
+
+.scan-frame-container {
+  position: relative;
+  width: 70vw;
+  height: 40vh;
+  max-width: 320px;
+  max-height: 400px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  margin-bottom: 2rem;
+}
+
+.scan-frame-corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: #f97316;
+  border-style: solid;
+  border-width: 0;
+}
+
+.top-left {
+  top: -2px;
+  left: -2px;
+  border-top-width: 4px;
+  border-left-width: 4px;
+}
+
+.top-right {
+  top: -2px;
+  right: -2px;
+  border-top-width: 4px;
+  border-right-width: 4px;
+}
+
+.bottom-left {
+  bottom: -2px;
+  left: -2px;
+  border-bottom-width: 4px;
+  border-left-width: 4px;
+}
+
+.bottom-right {
+  bottom: -2px;
+  right: -2px;
+  border-bottom-width: 4px;
+  border-right-width: 4px;
+}
+
+.scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(to right, transparent, #f97316, transparent);
+  box-shadow: 0 0 8px #f97316;
+  animation: scan 2.5s ease-in-out infinite;
+}
+
+.instructions-card {
+  background: rgba(13, 17, 28, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 90%;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.instructions-card p {
+  font-size: 0.9rem;
+  color: #d1d5db;
+}
+
+.icon-scan {
+  font-size: 1.25rem;
+}
+
+/* 4. Hotspot Popup Modal */
+#hotspot-modal {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  z-index: 20;
+  width: 90%;
+  max-width: 400px;
+  background: rgba(13, 17, 28, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 15px rgba(249, 115, 22, 0.15);
+  border-radius: 16px;
+  padding: 1.5rem;
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto;
+}
+
+#hotspot-modal.hidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(40px);
+  pointer-events: none;
+}
+
+.modal-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+#modal-close-btn {
+  position: absolute;
+  top: -0.5rem;
+  right: -0.5rem;
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  transition: color 0.2s;
+}
+
+#modal-close-btn:hover {
+  color: #fff;
+}
+
+.modal-header h4 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 0.25rem;
+}
+
+#modal-desc {
+  font-size: 0.9rem;
+  color: #d1d5db;
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+/* 5. Main Info Card Overlay */
+#info-overlay {
+  justify-content: flex-start;
+  padding: 1.5rem;
+  pointer-events: none;
+}
+
+.card-details {
+  background: rgba(13, 17, 28, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  width: 100%;
+  max-width: 440px;
+  padding: 1.25rem;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  pointer-events: auto;
+}
+
+.card-header h3 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #fff;
+}
+
+.badge {
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  width: fit-content;
+}
+
+.desc {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.stat-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #f97316;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.control-hints {
+  font-size: 0.72rem;
+  color: #facc15;
+  text-align: center;
+  font-weight: 500;
+  background: rgba(250, 204, 21, 0.08);
+  padding: 0.4rem;
+  border-radius: 6px;
+  border: 1px solid rgba(250, 204, 21, 0.15);
+}
+
+/* Animations */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes scan {
+  0%, 100% { top: 0%; opacity: 0.3; }
+  50% { top: 98%; opacity: 1; }
+}

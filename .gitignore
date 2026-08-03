@@ -1,0 +1,13 @@
+# Ignore giant raw asset files
+inputs/
+*.blend
+*.blend1
+assets/pamban_bridge.glb
+
+# Ignore development logs and environment keys
+*.log
+.env
+.DS_Store
+node_modules/
+dist/
+build/

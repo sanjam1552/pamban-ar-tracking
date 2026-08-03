@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+  <title>Pamban Bridge WebAR Experience | RVNL</title>
+  
+  <!-- Font Imports -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Import map to load MindAR and Three.js as ES modules -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+        "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- Main AR rendering container -->
+  <div id="ar-container"></div>
+
+  <!-- Starting Screen UI (User gesture required for camera permission) -->
+  <div id="start-screen" class="ui-overlay">
+    <div class="overlay-content">
+      <div class="logo-container">
+        <span class="rvnl-tag">RVNL</span>
+        <span class="ar-tag">AR EXPERIENCE</span>
+      </div>
+      <h1 class="title">Experience the<br><span class="highlight">Pamban Bridge</span><br>in AR</h1>
+      <p class="subtitle">Witness India's first vertical lift railway sea bridge rise dynamically from your boarding pass.</p>
+      
+      <button id="start-btn" class="btn">
+        <span>LAUNCH EXPERIENCE</span>
+        <svg class="btn-arrow" viewBox="0 0 24 24" width="24" height="24">
+          <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <div class="footer-note">
+        Requires camera access. Works best in a well-lit room.
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State UI (After click, before AR load) -->
+  <div id="loading-screen" class="ui-overlay hidden">
+    <div class="spinner-container">
+      <div class="ar-spinner"></div>
+      <p class="loading-text">Initializing AR Engine...</p>
+      <div class="progress-bar-container">
+        <div id="progress-bar" class="progress-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scanning Instructions Overlay (Active when camera is running but target not found) -->
+  <div id="scanning-overlay" class="ui-overlay hidden">
+    <div class="scan-frame-container">
+      <div class="scan-frame-corner top-left"></div>
+      <div class="scan-frame-corner top-right"></div>
+      <div class="scan-frame-corner bottom-left"></div>
+      <div class="scan-frame-corner bottom-right"></div>
+      <div class="scan-line"></div>
+    </div>
+    <div class="instructions-card">
+      <span class="icon-scan">📷</span>
+      <p>Point your camera at the <strong>RVNL Boarding Pass</strong></p>
+    </div>
+  </div>
+
+  <!-- Hotspot Info Panel (Pops up when a 3D hotspot is clicked) -->
+  <div id="hotspot-modal" class="hidden">
+    <div class="modal-content">
+      <button id="modal-close-btn">&times;</button>
+      <div class="modal-header">
+        <span id="modal-badge" class="badge">SPECIFICATION</span>
+        <h4 id="modal-title">Hotspot Details</h4>
+      </div>
+      <p id="modal-desc">Details about this section of the Pamban Bridge will appear here.</p>
+    </div>
+  </div>
+
+  <!-- Main Info Overlay (Visible when target is tracked) -->
+  <div id="info-overlay" class="ui-overlay hidden">
+    <div class="card-details">
+      <div class="card-header">
+        <span class="badge">LIVE AR</span>
+        <h3>NEW PAMBAN BRIDGE</h3>
+      </div>
+      <p class="desc">India's First Vertical Lift Railway Sea Bridge connecting Rameswaram Island to mainland India.</p>
+      
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-value">2.07 km</div>
+          <div class="stat-label">Total Length</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">72.5 m</div>
+          <div class="stat-label">Vertical Lift Span</div>
+        </div>
+      </div>
+
+      <div class="control-hints">
+        Tap the pulsing blue spheres on the bridge to view detailed technical specs.
+      </div>
+    </div>
+  </div>
+
+  <!-- Main JavaScript Logic -->
+  <script type="module" src="js/app.js?v=6"></script>
+</body>
+</html>

@@ -1,0 +1,629 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MindARThree } from 'mindar-image-three';
+
+// Configuration constants
+const MODEL_PATH = 'assets/pamban_bridge_standard.glb';
+const TARGETS_PATH = 'assets/targets.mind';
+const SMOOTHING_FACTOR = 0.15; // Jitter smoothing (lerp factor)
+const GRACE_PERIOD_MS = 1500;  // Grace period before hiding model on tracking loss
+
+// DOM Elements
+const startScreen = document.getElementById('start-screen');
+const loadingScreen = document.getElementById('loading-screen');
+const scanningOverlay = document.getElementById('scanning-overlay');
+const infoOverlay = document.getElementById('info-overlay');
+const startBtn = document.getElementById('start-btn');
+const progressBar = document.getElementById('progress-bar');
+const loadingText = document.querySelector('.loading-text');
+
+// Hotspot DOM Elements
+const hotspotModal = document.getElementById('hotspot-modal');
+const modalTitle = document.getElementById('modal-title');
+const modalDesc = document.getElementById('modal-desc');
+const modalCloseBtn = document.getElementById('modal-close-btn');
+
+let mindarThree = null;
+let bridgeModel = null;
+let visualGroup = null; // Group containing the model and animations for smoothing
+let anchorGroup = null; // The raw MindAR anchor group
+
+// Raycasting for interactive hotspots
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+const hotspotsList = []; // Array of hotspot meshes for click detection
+
+// Animation State
+let isModelLoaded = false;
+let isFirstDetection = true;
+let isTracked = false;
+let targetLostTimeout = null;
+let currentScale = 0;
+let targetScale = 0;
+
+// Sub-objects for animations
+let trainGroup = null;
+let liftSpanMesh = null;
+let scanningGlowPlane = null;
+let waterPlane = null;
+const floatingLabels = [];
+
+// Train animation parameters
+const trainPathStart = -1.5;
+const trainPathEnd = 1.5;
+let trainPosition = trainPathStart;
+let trainDirection = 1;
+
+// Lift span animation parameters
+let liftHeight = 0;
+let liftDirection = 0; // 0 = idle, 1 = rising, -1 = lowering
+const maxLiftHeight = 0.4;
+
+// Hotspot Data
+const hotspotData = [
+  {
+    title: "Scherzer Vertical Lift Span",
+    desc: "The center of the bridge features a 72.5m rolling lift span that raises vertically to allow ships and vessels to navigate the sea channel below.",
+    pos: new THREE.Vector3(0, 0.05, 0.05)
+  },
+  {
+    title: "Marine Substructure",
+    desc: "The substructure consists of concrete piers designed with marine-grade materials to withstand the high-salinity environment of the Palk Strait.",
+    pos: new THREE.Vector3(-0.4, 0.0, 0.02)
+  },
+  {
+    title: "2.07 km Sea Approach",
+    desc: "Connecting Rameswaram Island to mainland India via 143 steel girder spans. The bridge stands as a marvel of railway marine engineering.",
+    pos: new THREE.Vector3(0.4, 0.0, 0.02)
+  }
+];
+
+// Initialize WebAR App
+async function initAR() {
+  startScreen.classList.add('hidden');
+  loadingScreen.classList.remove('hidden');
+  updateProgress(10, 'Initializing AR Engine...');
+
+  try {
+    mindarThree = new MindARThree({
+      container: document.querySelector("#ar-container"),
+      imageTargetSrc: TARGETS_PATH
+    });
+
+    const { renderer, scene, camera } = mindarThree;
+
+    // Set up lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    dirLight.position.set(2, 5, 3);
+    scene.add(dirLight);
+
+    // Set up visual group for interpolation (smoothing)
+    visualGroup = new THREE.Group();
+    visualGroup.visible = false;
+    scene.add(visualGroup);
+
+    // Add Anchor
+    const anchor = mindarThree.addAnchor(0);
+    anchorGroup = anchor.group;
+
+    // Load Bridge Model
+    updateProgress(35, 'Loading 3D Model...');
+    await loadBridgeModel();
+
+    // Setup interactive click/tap events
+    setupClickEvents(camera);
+
+    // Start AR Engine
+    updateProgress(85, 'Starting Camera...');
+    await mindarThree.start();
+
+    // Hide loading screen, show scanner guide
+    loadingScreen.classList.add('hidden');
+    scanningOverlay.classList.remove('hidden');
+
+    // Handle tracking events
+    anchor.onTargetFound = () => {
+      clearTimeout(targetLostTimeout);
+      isTracked = true;
+      scanningOverlay.classList.add('hidden');
+      infoOverlay.classList.remove('hidden');
+
+      if (isFirstDetection) {
+        triggerArrivalSequence();
+        isFirstDetection = false;
+      }
+      visualGroup.visible = true;
+      targetScale = 1.0;
+    };
+
+    anchor.onTargetLost = () => {
+      isTracked = false;
+      targetLostTimeout = setTimeout(() => {
+        if (!isTracked) {
+          targetScale = 0.0;
+          infoOverlay.classList.add('hidden');
+          scanningOverlay.classList.remove('hidden');
+          closeHotspotModal();
+        }
+      }, GRACE_PERIOD_MS);
+    };
+
+    // Run Render/Animation loop
+    renderer.setAnimationLoop(() => {
+      updateARLoop();
+      renderer.render(scene, camera);
+    });
+
+  } catch (error) {
+    console.error('AR Initialization failed:', error);
+    loadingText.innerHTML = `<span style="color: #ef4444">Init Error:</span><br><small style="font-size: 0.8rem; color: #9ca3af">${error.message}</small>`;
+    progressBar.style.backgroundColor = '#ef4444';
+  }
+}
+
+// Update loading progress bar
+function updateProgress(percent, text) {
+  progressBar.style.width = `${percent}%`;
+  if (text) loadingText.textContent = text;
+}
+
+// Load the Pamban Bridge model
+function loadBridgeModel() {
+  return new Promise((resolve, reject) => {
+    const loader = new GLTFLoader();
+
+    loader.load(
+      MODEL_PATH,
+      (gltf) => {
+        bridgeModel = gltf.scene;
+
+        // We rotate X by 90 degrees to lay the model flat/perpendicular relative to the XY card.
+        bridgeModel.rotation.x = Math.PI / 2;
+        
+        // Scale up significantly to make the narrow bridge highly visible
+        bridgeModel.scale.set(35.0, 35.0, 35.0);
+        bridgeModel.position.set(0, 0, 0);
+
+        visualGroup.add(bridgeModel);
+
+        // Scan model hierarchy to bind custom animations and apply blacklist
+        setupModelAnimations(bridgeModel);
+
+        // Build premium supplementary elements (Water, Train, Glow, Hotspots, Labels)
+        buildWaterPlane();
+        buildProgrammaticTrain();
+        buildGlowScanEffect();
+        buildInteractiveHotspots();
+        buildFloatingLabels();
+
+        isModelLoaded = true;
+        updateProgress(75, 'Assets Loaded.');
+        resolve();
+      },
+      (xhr) => {
+        if (xhr.total > 0) {
+          const percent = 35 + Math.round((xhr.loaded / xhr.total) * 40);
+          updateProgress(percent, `Loading Model (${Math.round(xhr.loaded / 1024 / 1024)}MB)...`);
+        }
+      },
+      (error) => {
+        console.error('Error loading GLTF model:', error);
+        buildPlaceholderModel();
+        resolve();
+      }
+    );
+  });
+}
+
+// Look for animated parts in the GLB and hide background/non-bridge meshes using a blacklist
+function setupModelAnimations(root) {
+  root.traverse((node) => {
+    const name = node.name.toLowerCase();
+
+    // Hide specific background/table/base structures (applies to all nodes, groups, and meshes)
+    if (
+      name.includes('background') || 
+      name.includes('cube.060') || 
+      name.includes('cube_060') || 
+      name.includes('table.002') || 
+      name.includes('table_002') ||
+      name === 'base'
+    ) {
+      console.log('Hiding background/table node:', node.name);
+      node.visible = false;
+      return;
+    }
+
+    // Search for lift span
+    if (name.includes('lift') || name.includes('span')) {
+      liftSpanMesh = node;
+      console.log('Bound lift span mesh:', node.name);
+    }
+    // Search for train inside the GLB
+    if (name.includes('train')) {
+      trainGroup = node;
+      console.log('Bound train mesh from GLB:', node.name);
+    }
+  });
+}
+
+// Create a visual placeholder if the GLTF fails to load
+function buildPlaceholderModel() {
+  const geometry = new THREE.BoxGeometry(0.8, 0.1, 0.15);
+  const material = new THREE.MeshStandardMaterial({ 
+    color: 0xf97316, 
+    roughness: 0.4, 
+    metalness: 0.8 
+  });
+  const placeholder = new THREE.Mesh(geometry, material);
+  placeholder.rotation.x = Math.PI / 2;
+  visualGroup.add(placeholder);
+
+  // Set up dummy lift span
+  const liftGeo = new THREE.BoxGeometry(0.15, 0.15, 0.15);
+  const liftMat = new THREE.MeshStandardMaterial({ color: 0xea580c });
+  liftSpanMesh = new THREE.Mesh(liftGeo, liftMat);
+  liftSpanMesh.position.set(0, 0.1, 0);
+  visualGroup.add(liftSpanMesh);
+}
+
+// Build a custom programmatic train if not supplied in GLTF
+function buildProgrammaticTrain() {
+  if (trainGroup) return; // Use GLB train if it exists
+
+  trainGroup = new THREE.Group();
+  
+  // Locomotive
+  const locoGeo = new THREE.BoxGeometry(0.12, 0.03, 0.035);
+  const locoMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, metalness: 0.7, roughness: 0.3 });
+  const loco = new THREE.Mesh(locoGeo, locoMat);
+  trainGroup.add(loco);
+
+  // Coaches
+  for (let i = 1; i <= 3; i++) {
+    const coachGeo = new THREE.BoxGeometry(0.1, 0.026, 0.032);
+    const coachMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.5, roughness: 0.5 });
+    const coach = new THREE.Mesh(coachGeo, coachMat);
+    coach.position.x = -i * 0.12;
+    trainGroup.add(coach);
+  }
+
+  // Position train on bridge deck (Z pointing up, bridge runs along X axis)
+  trainGroup.position.set(trainPathStart, 0, 0.065);
+  visualGroup.add(trainGroup);
+}
+
+// Build a semi-transparent ocean water surface below the bridge
+function buildWaterPlane() {
+  const waterGeo = new THREE.PlaneGeometry(1.5, 0.7);
+  const waterMat = new THREE.MeshStandardMaterial({
+    color: 0x004d61, // Ocean blue-green
+    roughness: 0.15,
+    metalness: 0.8,
+    transparent: true,
+    opacity: 0.55,
+    side: THREE.DoubleSide
+  });
+
+  waterPlane = new THREE.Mesh(waterGeo, waterMat);
+  // Place slightly above card plane but below bridge deck
+  waterPlane.position.set(0, 0, 0.005);
+  visualGroup.add(waterPlane);
+}
+
+// Build a premium visual scan glow effect
+function buildGlowScanEffect() {
+  const geometry = new THREE.PlaneGeometry(1.2, 0.1);
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 32;
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, 32);
+  grad.addColorStop(0, 'rgba(249, 115, 22, 0)');
+  grad.addColorStop(0.5, 'rgba(249, 115, 22, 0.8)');
+  grad.addColorStop(1, 'rgba(249, 115, 22, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 256, 32);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+
+  scanningGlowPlane = new THREE.Mesh(geometry, material);
+  scanningGlowPlane.position.set(0, 0, 0.01);
+  visualGroup.add(scanningGlowPlane);
+}
+
+// Build interactive pulsing hotspots in 3D space
+function buildInteractiveHotspots() {
+  hotspotData.forEach((data, index) => {
+    const group = new THREE.Group();
+    group.position.copy(data.pos);
+
+    // Inner pulsing sphere
+    const innerGeo = new THREE.SphereGeometry(0.02, 16, 16);
+    const innerMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
+    const innerMesh = new THREE.Mesh(innerGeo, innerMat);
+    group.add(innerMesh);
+
+    // Outer glow ring
+    const outerGeo = new THREE.RingGeometry(0.025, 0.035, 32);
+    const outerMat = new THREE.MeshBasicMaterial({
+      color: 0x60a5fa,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.8
+    });
+    const outerMesh = new THREE.Mesh(outerGeo, outerMat);
+    group.add(outerMesh);
+
+    // Metadata for mapping click interactions
+    group.userData = {
+      isHotspot: true,
+      title: data.title,
+      desc: data.desc,
+      outerRing: outerMesh,
+      pulseSpeed: 0.04 + (index * 0.01) // slightly offset speeds for organic look
+    };
+
+    visualGroup.add(group);
+    hotspotsList.push(group); // Add to raycast target list
+  });
+}
+
+// Setup raycast click/tap listeners on the AR container
+function setupClickEvents(camera) {
+  const container = document.getElementById('ar-container');
+  container.style.pointerEvents = 'auto';
+
+  const onPointerDown = (event) => {
+    // Calculate normalized pointer coordinates (-1 to +1)
+    const rect = container.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    // Fire ray
+    raycaster.setFromCamera(mouse, camera);
+
+    // Intersect only objects inside our hotspotsList
+    const intersects = raycaster.intersectObjects(hotspotsList, true);
+
+    if (intersects.length > 0) {
+      // Find parent group that holds userData
+      let target = intersects[0].object;
+      while (target.parent && !target.userData.isHotspot) {
+        target = target.parent;
+      }
+
+      if (target.userData.isHotspot) {
+        showHotspotModal(target.userData.title, target.userData.desc);
+      }
+    }
+  };
+
+  container.addEventListener('click', onPointerDown);
+}
+
+// Display glassmorphic hotspot modal
+function showHotspotModal(title, desc) {
+  modalTitle.textContent = title;
+  modalDesc.textContent = desc;
+  hotspotModal.classList.remove('hidden');
+}
+
+// Close hotspot modal
+function closeHotspotModal() {
+  hotspotModal.classList.add('hidden');
+}
+modalCloseBtn.addEventListener('click', closeHotspotModal);
+
+// Build premium 3D billboard labels with connecting lines
+function buildFloatingLabels() {
+  const labelData = [
+    { text: "2.07 km Length", pos: new THREE.Vector3(-0.35, 0.15, 0.2), color: "#f97316" },
+    { text: "72.5m Lift Span", pos: new THREE.Vector3(0, 0.25, 0.3), color: "#facc15" },
+    { text: "Sea Bridge", pos: new THREE.Vector3(0.35, 0.12, 0.2), color: "#f97316" }
+  ];
+
+  labelData.forEach(data => {
+    // Create text sprite
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    
+    // Background card style
+    ctx.fillStyle = 'rgba(13, 17, 28, 0.9)';
+    ctx.roundRect(4, 4, 248, 56, 12);
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = data.color;
+    ctx.stroke();
+
+    // Text style
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(data.text, 128, 32);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
+    const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.scale.set(0.35, 0.09, 1.0);
+    sprite.position.copy(data.pos);
+    
+    // Create connecting line/pin
+    const lineMat = new THREE.LineBasicMaterial({ color: new THREE.Color(data.color), transparent: true, opacity: 0.6 });
+    const linePoints = [
+      new THREE.Vector3(data.pos.x, data.pos.y - 0.045, data.pos.z),
+      new THREE.Vector3(data.pos.x, 0.02, 0.02)
+    ];
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(linePoints);
+    const line = new THREE.Line(lineGeo, lineMat);
+
+    // Anchor point dot
+    const dotGeo = new THREE.SphereGeometry(0.012, 16, 16);
+    const dotMat = new THREE.MeshBasicMaterial({ color: data.color });
+    const dot = new THREE.Mesh(dotGeo, dotMat);
+    dot.position.copy(linePoints[1]);
+
+    const labelGroup = new THREE.Group();
+    labelGroup.add(sprite);
+    labelGroup.add(line);
+    labelGroup.add(dot);
+    labelGroup.visible = false; // Initially hidden, appears after sequence
+
+    visualGroup.add(labelGroup);
+    floatingLabels.push(labelGroup);
+  });
+}
+
+// Sequence triggered when card is scanned for the first time
+function triggerArrivalSequence() {
+  currentScale = 0;
+  visualGroup.scale.set(0, 0, 0);
+
+  // Reset train
+  trainPosition = trainPathStart;
+  if (trainGroup) trainGroup.position.x = trainPosition;
+
+  // Start Lift span sequence
+  liftHeight = 0;
+  liftDirection = 1; // Start raising
+
+  // Set scanning glow start
+  if (scanningGlowPlane) {
+    scanningGlowPlane.position.y = -0.6;
+    scanningGlowPlane.visible = true;
+  }
+
+  // Hide labels initially
+  floatingLabels.forEach(l => l.visible = false);
+}
+
+// Main update loop
+function updateARLoop() {
+  if (!isModelLoaded) return;
+
+  // 1. Interpolation / Lerping for Jitter Smoothing & Grace Period Hiding
+  if (isTracked) {
+    // Smoothly transition visualGroup scale up
+    currentScale += (targetScale - currentScale) * SMOOTHING_FACTOR;
+    visualGroup.scale.set(currentScale, currentScale, currentScale);
+
+    // Decompose anchorGroup's matrix (since MindAR updates matrix directly and sets matrixAutoUpdate = false)
+    const targetPos = new THREE.Vector3();
+    const targetQuaternion = new THREE.Quaternion();
+    const targetScaleVec = new THREE.Vector3();
+    anchorGroup.matrix.decompose(targetPos, targetQuaternion, targetScaleVec);
+
+    // Lerp visualGroup position & rotation to match raw tracking anchor
+    visualGroup.position.lerp(targetPos, SMOOTHING_FACTOR);
+    visualGroup.quaternion.slerp(targetQuaternion, SMOOTHING_FACTOR);
+  } else {
+    // If lost tracking and grace period expired, scale down
+    currentScale += (targetScale - currentScale) * SMOOTHING_FACTOR;
+    visualGroup.scale.set(currentScale, currentScale, currentScale);
+    if (currentScale < 0.01) {
+      visualGroup.visible = false;
+    }
+  }
+
+  // Only animate sub-elements if model is actively visible
+  if (visualGroup.visible && currentScale > 0.1) {
+    
+    // 2. Scanline Glow animation
+    if (scanningGlowPlane && scanningGlowPlane.visible) {
+      scanningGlowPlane.position.y += 0.012;
+      if (scanningGlowPlane.position.y > 0.6) {
+        scanningGlowPlane.visible = false; // Hide scan plane after one swipe
+        // Fade in labels
+        floatingLabels.forEach(l => {
+          l.visible = true;
+          l.scale.set(0.01, 0.01, 0.01);
+        });
+      }
+    }
+
+    // 3. Water Ripple simulation
+    if (waterPlane) {
+      // Create organic sea ripple effect using sin waves in time
+      const time = clock.getElapsedTime();
+      waterPlane.scale.x = 1.0 + Math.sin(time * 0.8) * 0.015;
+      waterPlane.scale.y = 1.0 + Math.cos(time * 1.1) * 0.015;
+    }
+
+    // 4. Hotspots Pulse Animation
+    hotspotsList.forEach((hotspot) => {
+      const time = clock.getElapsedTime();
+      const speed = hotspot.userData.pulseSpeed;
+      const pulseScale = 1.0 + Math.sin(time * 6 * speed) * 0.25;
+      hotspot.userData.outerRing.scale.set(pulseScale, pulseScale, 1);
+    });
+
+    // 5. Scale-up labels animation
+    floatingLabels.forEach(l => {
+      if (l.visible && l.scale.x < 1.0) {
+        const s = l.scale.x + 0.05;
+        l.scale.set(s, s, s);
+      }
+    });
+
+    // 6. Train Movement Animation
+    if (trainGroup) {
+      trainPosition += 0.004 * trainDirection;
+      trainGroup.position.x = trainPosition;
+      
+      if (trainDirection > 0) {
+        trainGroup.rotation.z = 0;
+      } else {
+        trainGroup.rotation.z = Math.PI;
+      }
+
+      if (trainPosition > trainPathEnd) {
+        trainDirection = -1;
+      } else if (trainPosition < trainPathStart) {
+        trainDirection = 1;
+      }
+    }
+
+    // 7. Vertical Lift Span Animation
+    if (liftSpanMesh) {
+      if (liftDirection === 1) {
+        liftHeight += 0.002;
+        if (liftHeight >= maxLiftHeight) {
+          liftHeight = maxLiftHeight;
+          liftDirection = -1; // Start lowering after reaching top
+        }
+      } else if (liftDirection === -1) {
+        liftHeight -= 0.002;
+        if (liftHeight <= 0) {
+          liftHeight = 0;
+          liftDirection = 0; // Stop at bottom
+          // Schedule lift span to rise again in 5 seconds
+          setTimeout(() => {
+            if (isTracked) liftDirection = 1;
+          }, 5000);
+        }
+      }
+      
+      // Update lift span position along local Y axis in Three.js (corresponds to Blender vertical axis)
+      liftSpanMesh.position.y = liftHeight;
+    }
+  }
+}
+
+// Clock for time-based ripple & pulse animations
+const clock = new THREE.Clock();
+
+// Bind Launch Button Click
+startBtn.addEventListener('click', initAR);
