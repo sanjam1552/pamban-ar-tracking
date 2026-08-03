@@ -52,6 +52,33 @@ let targetScale = 0;
 // Lock/Free-View state
 let isLocked = false;
 
+// Gravity tracking orientation variables
+let phoneBeta = 90;  // Default vertical hold
+let phoneGamma = 0;
+
+function handleOrientation(e) {
+  if (e.beta !== null) phoneBeta = e.beta;
+  if (e.gamma !== null) phoneGamma = e.gamma;
+}
+
+// Request DeviceOrientation permission on iOS/Android
+async function requestMotionPermission() {
+  if (typeof DeviceOrientationEvent !== 'undefined' && 
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const response = await DeviceOrientationEvent.requestPermission();
+      if (response === 'granted') {
+        window.addEventListener('deviceorientation', handleOrientation, true);
+        console.log('Motion permission granted.');
+      }
+    } catch (err) {
+      console.error('Motion permission error:', err);
+    }
+  } else {
+    window.addEventListener('deviceorientation', handleOrientation, true);
+  }
+}
+
 // Sub-objects for animations
 let trainGroup = null;
 let liftSpanMesh = null;
@@ -698,15 +725,26 @@ function updateARLoop() {
     currentScale += (targetScale - currentScale) * SMOOTHING_FACTOR;
     visualGroup.scale.set(currentScale, currentScale, currentScale);
 
-    // Decompose anchorGroup's matrix (since MindAR updates matrix directly and sets matrixAutoUpdate = false)
+    // Decompose anchorGroup's matrix
     const targetPos = new THREE.Vector3();
     const targetQuaternion = new THREE.Quaternion();
     const targetScaleVec = new THREE.Vector3();
     anchorGroup.matrix.decompose(targetPos, targetQuaternion, targetScaleVec);
 
-    // Lerp visualGroup position & rotation to match raw tracking anchor
+    // Lerp visualGroup position to match raw tracking anchor
     visualGroup.position.lerp(targetPos, SMOOTHING_FACTOR);
-    visualGroup.quaternion.slerp(targetQuaternion, SMOOTHING_FACTOR);
+
+    // Calculate gravity-alignment quaternion from phone pitch/roll
+    const betaRad = (phoneBeta * Math.PI) / 180;
+    const gammaRad = (phoneGamma * Math.PI) / 180;
+    
+    // Create quaternion representing the phone's tilt relative to gravity
+    // Subtract Math.PI/2 since 90 degrees beta corresponds to holding phone vertically upright
+    const phoneTiltEuler = new THREE.Euler(betaRad - Math.PI / 2, gammaRad, 0, 'YXZ');
+    const gravityAlignQuat = new THREE.Quaternion().setFromEuler(phoneTiltEuler).invert();
+
+    // Lerp to match gravity alignment instead of the raw anchor's tilted monitor orientation
+    visualGroup.quaternion.slerp(gravityAlignQuat, SMOOTHING_FACTOR);
   } else {
     // If lost tracking and grace period expired, scale down
     currentScale += (targetScale - currentScale) * SMOOTHING_FACTOR;
@@ -804,7 +842,10 @@ function updateARLoop() {
 const clock = new THREE.Clock();
 
 // Bind Launch Button Click
-startBtn.addEventListener('click', initAR);
+startBtn.addEventListener('click', () => {
+  requestMotionPermission();
+  initAR();
+});
 
 // Bind Mode Toggle button clicks
 trackModeBtn.addEventListener('click', () => {
@@ -849,4 +890,7 @@ freeModeBtn.addEventListener('click', () => {
 
 // Bind 3D skip button click
 const skipBtn = document.getElementById('skip-btn');
-skipBtn.addEventListener('click', initFree3DViewer);
+skipBtn.addEventListener('click', () => {
+  requestMotionPermission();
+  initFree3DViewer();
+});
