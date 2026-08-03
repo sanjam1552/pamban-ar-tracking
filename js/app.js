@@ -226,27 +226,44 @@ function setupModelAnimations(root) {
   root.traverse((node) => {
     const name = node.name.toLowerCase();
 
-    // Hide specific background/table/base structures (applies to all nodes, groups, and meshes)
+    // Turn background/dome covers into beautiful transparent glass instead of hiding them
     if (
       name.includes('background') || 
       name.includes('cube.060') || 
-      name.includes('cube_060') || 
-      name.includes('table') || 
-      name === 'base'
+      name.includes('cube_060')
     ) {
-      console.log('Hiding background/table node:', node.name);
+      if (node.isMesh) {
+        node.material = new THREE.MeshPhysicalMaterial({
+          color: 0xdbeafe,       // Light ice blue tint
+          transparent: true,
+          opacity: 0.25,         // Highly transparent
+          roughness: 0.1,        // Shiny
+          metalness: 0.1,
+          transmission: 0.9,     // Refractive glass effect
+          ior: 1.5,              // Index of refraction for glass
+          depthWrite: false,     // Prevents clipping glitches with inner models
+          side: THREE.DoubleSide
+        });
+        node.visible = true;
+        console.log('Converted to glass cover:', node.name);
+        return;
+      }
+    }
+
+    // Hide specific table structures
+    if (name.includes('table')) {
       node.visible = false;
       return;
     }
 
-    // Hide any mesh that is physically too large on all axes (like the Cube.243 background box)
+    // Hide any mesh that is physically too large on all axes (excluding the glass covers we just handled)
     if (node.isMesh) {
       node.geometry.computeBoundingBox();
       const box = node.geometry.boundingBox;
       if (box) {
         const size = new THREE.Vector3();
         box.getSize(size);
-        // Studio boxes are huge in all 3 dimensions, whereas long bridge rails are only large on 1 axis
+        // Hide giant studio boxes that are not our glass covers
         if (size.x > 5.0 && size.y > 5.0 && size.z > 5.0) {
           console.log('Hiding giant background box by size:', node.name, size);
           node.visible = false;
