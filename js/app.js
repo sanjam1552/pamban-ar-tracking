@@ -5,8 +5,8 @@ import { MindARThree } from 'mindar-image-three';
 // Configuration constants
 const MODEL_PATH = 'assets/pamban_bridge_standard.glb';
 const TARGETS_PATH = 'assets/targets.mind';
-const SMOOTHING_FACTOR = 0.28; // Balanced jitter smoothing (no slide on ice, no jitter)
-const GRACE_PERIOD_MS = 1500;  // Grace period before hiding model on tracking loss
+const SMOOTHING_FACTOR = 0.20; // Smooth tracking, filters hand jitter
+const GRACE_PERIOD_MS = 5000;  // 5 seconds grace period when card goes off-screen
 
 // DOM Elements
 const startScreen = document.getElementById('start-screen');
@@ -92,13 +92,17 @@ async function initAR() {
 
     const { renderer, scene, camera } = mindarThree;
 
-    // Set up lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-    scene.add(ambientLight);
+    // Set up professional three-point lighting system
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444455, 1.2); // Soft sky & ground bounce
+    scene.add(hemiLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    dirLight.position.set(2, 5, 3);
-    scene.add(dirLight);
+    const keyLight = new THREE.DirectionalLight(0xfff5ea, 1.5); // Warm sun light
+    keyLight.position.set(3, 10, 5);
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0xdbeafe, 0.8); // Cool blue sky fill
+    fillLight.position.set(-3, 5, -5);
+    scene.add(fillLight);
 
     // Set up visual group for interpolation (smoothing)
     visualGroup = new THREE.Group();
@@ -336,6 +340,7 @@ function buildWaterPlane() {
     metalness: 0.8,
     transparent: true,
     opacity: 0.55,
+    depthWrite: false, // Prevents transparency depth sorting glitches
     side: THREE.DoubleSide
   });
 
