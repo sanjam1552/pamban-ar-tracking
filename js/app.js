@@ -183,8 +183,8 @@ function loadBridgeModel() {
         // We rotate X by 90 degrees to lay the model flat/perpendicular relative to the XY card.
         bridgeModel.rotation.x = Math.PI / 2;
         
-        // Scale up significantly to make the narrow bridge highly visible
-        bridgeModel.scale.set(35.0, 35.0, 35.0);
+        // Scale to 3.5 to fit nicely on the card and screen when viewed at an angle
+        bridgeModel.scale.set(3.5, 3.5, 3.5);
         bridgeModel.position.set(0, 0, 0);
 
         visualGroup.add(bridgeModel);
